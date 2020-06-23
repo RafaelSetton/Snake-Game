@@ -37,17 +37,13 @@ class Game:
 
 class Snake:
     def __init__(self):
-        self.snake = {'cabeca': [0, 4], 'vertices': dict(), 'rabo': [0, 0], 'tamanho': 5}
-        self.rmove = lambda: self.right('rabo')
-        self.fmove = lambda: self.right('cabeca')
         self.move = self.right
         self.aumentar = False
         self.cells = [[0, 3], [0, 2], [0, 1], [0, 0]]
-
-        self.render()
+        self.tamanho = len(self.cells)
 
     def aumentar_handler(self):
-        if self.snake['cabeca'] in game.fruits:
+        if self.cells[-1] in game.fruits:
             self.aumentar = True
             game.fruits = []
         else:
@@ -56,30 +52,21 @@ class Snake:
     def collision_handler(self):
 
         collisions = [
-            self.snake['cabeca'][0] > game.win_size-1,
-            self.snake['cabeca'][0] < 0,
-            self.snake['cabeca'][1] > game.win_size-1,
-            self.snake['cabeca'][1] < 0,
-            self.snake['cabeca'] in self.cells[:-1],
+            self.cells[-1][0] > game.win_size-1,
+            self.cells[-1][0] < 0,
+            self.cells[-1][1] > game.win_size-1,
+            self.cells[-1][1] < 0,
+            self.cells[-1] in self.cells[:-1],
         ]
 
         if any(collisions):
             raise CollisionError
-        self.cells.append(self.snake['cabeca'].copy())
-        if len(self.cells) > self.snake['tamanho']:
-            self.cells.pop(0)
 
     def draw(self):
-        game.pixel(self.snake['rabo'][0], self.snake['rabo'][1], '#111144')
-        game.pixel(self.snake['cabeca'][0], self.snake['cabeca'][1], '#cccccc')
-
-        self.fmove()
-        if self.aumentar:
-            self.snake['tamanho'] += 1
-        else:
-            self.rmove()
-
-        game.pixel(self.snake['cabeca'][0], self.snake['cabeca'][1], '#777777')
+        self.move()
+        game.pixel(*self.cells[0], '#111144')
+        game.pixel(*self.cells[-1], '#cccccc')
+        game.pixel(*self.cells[-2], '#777777')
 
     def render(self):
 
@@ -87,22 +74,35 @@ class Snake:
         self.aumentar_handler()
 
         self.draw()
+        self.tamanho = len(self.cells)
 
-        if str(self.snake['rabo']) in self.snake['vertices'].keys():
-            self.rmove = self.snake['vertices'][str(self.snake['rabo'])]
-            del self.snake['vertices'][str(self.snake['rabo'])]
+    def up(self):
+        cabeca = self.cells[0]
+        cabeca[0] -= 1
+        self.cells.append(cabeca)
+        if not self.aumentar:
+            self.cells.pop(0)
 
-    def up(self, parte):
-        self.snake[parte][0] -= 1
+    def left(self):
+        cabeca = self.cells[0]
+        cabeca[1] -= 1
+        self.cells.append(cabeca)
+        if not self.aumentar:
+            self.cells.pop(0)
 
-    def left(self, parte):
-        self.snake[parte][1] -= 1
+    def down(self):
+        cabeca = self.cells[0]
+        cabeca[0] += 1
+        self.cells.append(cabeca)
+        if not self.aumentar:
+            self.cells.pop(0)
 
-    def down(self, parte):
-        self.snake[parte][0] += 1
-
-    def right(self, parte):
-        self.snake[parte][1] += 1
+    def right(self):
+        cabeca = self.cells[0]
+        cabeca[1] += 1
+        self.cells.append(cabeca)
+        if not self.aumentar:
+            self.cells.pop(0)
 
     def chg_direction(self, new_direction):
         oposites = ((self.up, self.down), (self.right, self.left))
@@ -110,23 +110,13 @@ class Snake:
             if self.move in pair and new_direction in pair:
                 return
         self.move = new_direction
-        self.fmove = lambda: self.move('cabeca')
-        self.snake['vertices'][str(self.snake['cabeca'])] = lambda: new_direction('rabo')
 
 
 class Fruit:
     def __init__(self):
-        self.coords = []
-
-        self.new()
-        self.draw()
-
-    def new(self):
         self.coords = [randint(1, game.win_size-1), randint(1, game.win_size-1)]
-        if self.coords in snake.cells:
-            self.new()
-
-    def draw(self):
+        while self.coords in snake.cells:
+            self.coords = [randint(1, game.win_size-1), randint(1, game.win_size-1)]
         game.pixel(self.coords[0], self.coords[1], '#00ff00')
 
 
@@ -152,25 +142,25 @@ snake = Snake()
 def run():
     try:
         while True:
-
             snake.render()
 
             if len(game.fruits) == 0:
                 game.fruits.append(Fruit().coords)
 
             game.window.update()
-
-            sleep(0.1-0.001*snake.snake['tamanho'])
+            sleep(0.1-0.001*snake.tamanho)
     except CollisionError:
         game.window.destroy()
         print("Ops, você perdeu :(")
-        print(f"Sua pontuação foi de {fg('yellow')}{snake.snake['tamanho']} pontos.")
+        print(f"Sua pontuação foi de {fg('yellow')}{snake.tamanho} pontos.")
         with open('snake_points.txt', 'r+') as pts:
+            nome = input(f"{fg('red')}Digite seu nome: ")
+
             arq = pts.read()
             top = arq.split('\n')
-            nome = input(f"{fg('red')}Digite seu nome: ")
-            top.append(f"{nome:15} {str(snake.snake['tamanho']).zfill(2)}".replace(' ', '-'))
+            top.append(f"{nome:15} {str(snake.tamanho).zfill(2)}".replace(' ', '-'))
             top.sort(key=lambda x: int(x[-2:]), reverse=True)
+
             print(f"{fg('blue')}Maiores pontuações:")
             for pt in top[:10]:
                 print(pt)
