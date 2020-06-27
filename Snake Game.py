@@ -1,9 +1,8 @@
 from tkinter import Tk, Label
 from random import randint
 from time import sleep
-from colored import fg
 from keyboard import read_key
-from threading import Thread, Event
+from threading import Thread
 
 
 class CollisionError(IndexError):
@@ -28,7 +27,8 @@ class Game:
             for j in range(self.win_size):
                 self.pixels[i][j].grid(row=i, column=j)
 
-    def pixel(self, x, y, color):
+    def pixel(self, coords, color):
+        x, y = coords
         try:
             self.pixels[x][y]['bg'] = color
         except IndexError:
@@ -39,7 +39,7 @@ class Snake:
     def __init__(self):
         self.move = self.right
         self.aumentar = False
-        self.cells = [[0, 3], [0, 2], [0, 1], [0, 0]]
+        self.cells = [[0, 0], [0, 1], [0, 2], [0, 3]]
         self.tamanho = len(self.cells)
 
     def aumentar_handler(self):
@@ -64,12 +64,11 @@ class Snake:
 
     def draw(self):
         self.move()
-        game.pixel(*self.cells[0], '#111144')
-        game.pixel(*self.cells[-1], '#cccccc')
-        game.pixel(*self.cells[-2], '#777777')
+        game.pixel(self.cells[0], '#111144')
+        game.pixel(self.cells[-1], '#777777')
+        game.pixel(self.cells[-2], '#cccccc')
 
     def render(self):
-
         self.collision_handler()
         self.aumentar_handler()
 
@@ -77,28 +76,28 @@ class Snake:
         self.tamanho = len(self.cells)
 
     def up(self):
-        cabeca = self.cells[0]
+        cabeca = self.cells[-1][:]
         cabeca[0] -= 1
         self.cells.append(cabeca)
         if not self.aumentar:
             self.cells.pop(0)
 
     def left(self):
-        cabeca = self.cells[0]
+        cabeca = self.cells[-1][:]
         cabeca[1] -= 1
         self.cells.append(cabeca)
         if not self.aumentar:
             self.cells.pop(0)
 
     def down(self):
-        cabeca = self.cells[0]
+        cabeca = self.cells[-1][:]
         cabeca[0] += 1
         self.cells.append(cabeca)
         if not self.aumentar:
             self.cells.pop(0)
 
     def right(self):
-        cabeca = self.cells[0]
+        cabeca = self.cells[-1][:]
         cabeca[1] += 1
         self.cells.append(cabeca)
         if not self.aumentar:
@@ -117,22 +116,7 @@ class Fruit:
         self.coords = [randint(1, game.win_size-1), randint(1, game.win_size-1)]
         while self.coords in snake.cells:
             self.coords = [randint(1, game.win_size-1), randint(1, game.win_size-1)]
-        game.pixel(self.coords[0], self.coords[1], '#00ff00')
-
-
-class StoppableThread(Thread):
-    """Thread class with a stop() method. The thread itself has to check
-    regularly for the stopped() condition."""
-
-    def __init__(self, target, kwargs):
-        super(StoppableThread, self).__init__(target=target, kwargs=kwargs)
-        self._stop_event = Event()
-
-    def stop(self):
-        self._stop_event.set()
-
-    def stopped(self):
-        return self._stop_event.is_set()
+        game.pixel(self.coords, '#00ff00')
 
 
 game = Game()
@@ -151,21 +135,7 @@ def run():
             sleep(0.1-0.001*snake.tamanho)
     except CollisionError:
         game.window.destroy()
-        print("Ops, você perdeu :(")
-        print(f"Sua pontuação foi de {fg('yellow')}{snake.tamanho} pontos.")
-        with open('snake_points.txt', 'r+') as pts:
-            nome = input(f"{fg('red')}Digite seu nome: ")
-
-            arq = pts.read()
-            top = arq.split('\n')
-            top.append(f"{nome:15} {str(snake.tamanho).zfill(2)}".replace(' ', '-'))
-            top.sort(key=lambda x: int(x[-2:]), reverse=True)
-
-            print(f"{fg('blue')}Maiores pontuações:")
-            for pt in top[:10]:
-                print(pt)
-            pts.seek(0)
-            pts.write('\n'.join(top))
+        input("Pressione enter para sair")
 
 
 def listen():
@@ -184,6 +154,7 @@ def listen():
             break
         elif func:
             func()
+            sleep(0.1 - 0.001 * snake.tamanho)
 
 
 Thread(target=listen).start()
