@@ -3,6 +3,7 @@ from random import randint
 from time import sleep
 from keyboard import read_key
 from threading import Thread
+from colored import fg
 
 
 class CollisionError(IndexError):
@@ -135,6 +136,20 @@ def run():
             sleep(0.1-0.001*snake.tamanho)
     except CollisionError:
         game.window.destroy()
+        print("Ops, você perdeu :(")
+        print(f"Sua pontuação foi de {fg('yellow')}{snake.tamanho} pontos.")
+        with open('snake_points.txt', 'r+') as pts:
+            arq = pts.read()
+            top = arq.split('\n')
+            nome = input(f"{fg('red')}Digite seu nome: ")
+            top.append(f"{nome:15} {str(snake.tamanho).zfill(2)}".replace(' ', '-'))
+            top.sort(key=lambda x: int(x[-2:]), reverse=True)
+
+            print(f"{fg('blue')}Maiores pontuações:")
+            for pt in top[:10]:
+                print(pt)
+            pts.seek(0)
+            pts.write('\n'.join(top))
         input("Pressione enter para sair")
 
 
